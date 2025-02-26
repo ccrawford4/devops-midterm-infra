@@ -47,7 +47,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
             docker ps -q | grep . && docker rm -f $(docker ps -q)
             docker pull ${{ secrets.ECR_REPOSITORY_URI }}:frontend
-            docker run -p "3000:80" -e API_KEY="${{ secrets.API_URL }}" -d ${{ secrets.ECR_REPOSITORY_URI }}:frontend
+            docker run -p "3000:80" -e API_URL="${{ secrets.API_URL }}" -d ${{ secrets.ECR_REPOSITORY_URI }}:frontend
             docker pull ${{ secrets.ECR_REPOSITORY_URI }}:backend
             docker run -p "8080:8080" -e DB_DSN="${{ secrets.DB_DSN }}" -d ${{ secrets.ECR_REPOSITORY_URI }}:backend
+            sudo systemctl is-active --quiet nginx || sudo systemctl start nginx
           EOF
