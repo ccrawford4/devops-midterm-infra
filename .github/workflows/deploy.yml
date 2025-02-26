@@ -13,3 +13,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ccrawford4/devops-midterm-source
+          fetch-tags: true
+      - name: Echo Github Tag
+        run: |
+           echo ${{ github.event.release.tag_name }}
+     
