@@ -1,0 +1,15 @@
+name: Nightly Build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  checkout:
+    name: Checkout Source Repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ccrawford4/devops-midterm-source
