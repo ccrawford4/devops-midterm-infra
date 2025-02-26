@@ -49,5 +49,5 @@ jobs:
             docker pull ${{ secrets.ECR_REPOSITORY_URI }}:frontend
             docker run -d ${{ secrets.ECR_REPOSITORY_URI }}:frontend
             docker pull ${{ secrets.ECR_REPOSITORY_URI }}:backend
-            docker run -e DB_DSN=${{ secrets.DB_DSN }} -d ${{ secrets.ECR_REPOSITORY_URI }}:backend
+            docker run -e DB_DSN="${{ secrets.DB_DSN }}" -d ${{ secrets.ECR_REPOSITORY_URI }}:backend
           EOF
