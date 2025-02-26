@@ -5,8 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  checkout:
-    name: Checkout Source Repo
+  deploy:
+    name: Deploy to QA
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Repo
@@ -14,7 +14,43 @@ jobs:
         with:
           repository: ccrawford4/devops-midterm-source
           fetch-tags: true
-      - name: Echo Github Tag
+    
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker images to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-           echo ${{ github.event.release.tag_name }}
-     
+          for service in frontend backend; do
+            cd $service
+            docker build -t $service .
+            docker tag $service $ECR_REGISTRY:$service
+            docker push $ECR_REGISTRY:$service
+            cd ..
+          done
+
+      - name: Deploy to QA EC2
+        env: 
+          PRIVATE_KEY: ${{ secrets.EC2_PEM }}
+          HOSTNAME: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
+            docker rm -f $(docker ps -aq)
+            for service in frontend backend; do
+              docker pull ${ECR_REGISTRY}:$service
+              docker run -d ${ECR_REGISTRY}:$service
+            done
+          EOF
