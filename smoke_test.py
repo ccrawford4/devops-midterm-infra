@@ -19,10 +19,16 @@ def connect_to_ec2():
 
 def create_ec2_instance():
     ec2 = connect_to_ec2()
-    conn = ec2.run_instances(InstanceType="t2.micro",
-                            MaxCount=1,
-                            MinCount=1,
-                            ImageId="ami-0c614dee691cbbf37")
+    conn = ec2.run_instances(
+        InstanceType="t2.micro",
+        MaxCount=1,
+        MinCount=1,
+        LaunchTemplate={
+            'LaunchTemplateId': 'string',
+            'LaunchTemplateName': 'string',
+            'Version': 'string'
+        },
+    )
     print("Dynamic EC2 Instance Created: ", conn['Instances'][0]['InstanceId'])
 
 if __name__ == "__main__":

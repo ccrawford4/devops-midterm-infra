@@ -45,6 +45,11 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
+            export AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login -u AWS --password-stdin ${{ secrets.ECR_REPOSITORY_URI }}
             docker ps -q | grep . && docker rm -f $(docker ps -q)
             docker pull ${{ secrets.ECR_REPOSITORY_URI }}:frontend
             docker run -p "3000:80" -e API_URL="${{ secrets.API_URL }}" -d ${{ secrets.ECR_REPOSITORY_URI }}:frontend
