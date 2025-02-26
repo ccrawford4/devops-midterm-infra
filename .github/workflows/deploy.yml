@@ -37,18 +37,17 @@ jobs:
             cd ..
           done
 
-      - name: Deploy to QA EC2
+      - name: Deploy to QA
         env: 
           PRIVATE_KEY: ${{ secrets.EC2_PEM }}
           HOSTNAME: ${{ secrets.EC2_HOST }}
           USER_NAME: ${{ secrets.EC2_USER }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
             docker ps -q | grep . && docker rm -f $(docker ps -q)
-            for service in frontend backend; do
-              docker pull ${{ secrets.ECR_REPOSITORY_URI }}:$service
-              docker run -d ${{ secrets.ECR_REPOSITORY_URI }}:$service
-            done
+            docker pull ${{ secrets.ECR_REPOSITORY_URI }}:frontend
+            docker run -d ${{ secrets.ECR_REPOSITORY_URI }}:frontend
+            docker pull ${{ secrets.ECR_REPOSITORY_URI }}:backend
+            docker run -e DB_DSN=${{ secrets.DB_DSN }} -d ${{ secrets.ECR_REPOSITORY_URI }}:backend
           EOF
