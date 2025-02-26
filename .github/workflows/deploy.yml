@@ -28,8 +28,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push Docker images to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           for service in frontend backend; do
             cd $service
@@ -48,9 +46,9 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
-            docker rm -f $(docker ps -aq)
+            docker ps -q | grep . && docker rm -f $(docker ps -q)
             for service in frontend backend; do
-              docker pull ${ECR_REGISTRY}:$service
-              docker run -d ${ECR_REGISTRY}:$service
+              docker pull ${{ secrets.ECR_REPOSITORY_URI }}:$service
+              docker run -d ${{ secrets.ECR_REPOSITORY_URI }}:$service
             done
           EOF
