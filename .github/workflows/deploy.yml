@@ -9,12 +9,6 @@ jobs:
     name: Deploy to QA
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source Repo
-        uses: actions/checkout@v4
-        with:
-          repository: ccrawford4/devops-midterm-source
-          fetch-tags: true
-      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -35,6 +29,12 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           EC2_USER: ${{ secrets.EC2_USER }}
           HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
+
+      - name: Checkout Source Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ccrawford4/devops-midterm-source
+          fetch-tags: true
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
