@@ -9,6 +9,9 @@ jobs:
     name: Deploy to QA
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Infra Repo
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
