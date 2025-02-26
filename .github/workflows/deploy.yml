@@ -25,7 +25,7 @@ jobs:
       - name: Launch EC2 instance and run tests
         id: ec2-deploy
         run: |
-          python ec2_deploy.py
+          python smoke_test.py
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_PEM }}
           LAUNCH_TEMPLATE_ID: ${{ secrets.LAUNCH_TEMPLATE_ID }}
