@@ -34,8 +34,8 @@ jobs:
           for service in frontend backend; do
             cd $service
             docker build -t $service .
-            docker tag $service ${ECR_REGISTRY}:$service
-            docker push ${ECR_REGISTRY}:$service
+            docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}:$service
+            docker push ${{ secrets.ECR_REPOSITORY_URI }}:$service
             cd ..
           done
 
