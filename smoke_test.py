@@ -22,6 +22,7 @@ from pathlib import Path
 
 # Get environment variables
 LAUNCH_TEMPLATE_ID = os.environ.get('LAUNCH_TEMPLATE_ID')
+LAUNCH_TEMPLATE_NAME = os.environ.get('LAUNCH_TEMPLATE_NAME')
 AWS_REGION = os.environ.get('AWS_REGION')
 EC2_SSH_KEY = os.environ.get('EC2_SSH_KEY')
 EC2_USER = os.environ.get('EC2_USER')
@@ -54,28 +55,27 @@ def create_ssh_key_file():
 def launch_ec2_instance():
     """Launch an EC2 instance using the launch template."""
     print("Launching EC2 instance...")
-    
     ec2 = boto3.client('ec2', region_name=AWS_REGION)
+    print("AWS_REGION: ", AWS_REGION)
+    print("EC2: ", ec2)
+    print("LAUNCH TEMPLATE ID: ", LAUNCH_TEMPLATE_ID)
+    print("LAUNCH TEMPLATE NAME: ", LAUNCH_TEMPLATE_NAME)
     
     # Launch the instance
     response = ec2.run_instances(
-        LaunchTemplate={'LaunchTemplateId': LAUNCH_TEMPLATE_ID},
+        LaunchTemplate={
+            'LaunchTemplateId': LAUNCH_TEMPLATE_ID,
+            'LaunchTemplateName': LAUNCH_TEMPLATE_NAME,
+            'Version': '1'
+        },
         MinCount=1,
         MaxCount=1
     )
+
+    print("RESPONSE: ", response)
     
     instance_id = response['Instances'][0]['InstanceId']
     print(f"EC2 instance {instance_id} launched.")
-    
-    # Tag the instance
-    ec2.create_tags(
-        Resources=[instance_id],
-        Tags=[
-            {'Key': 'Name', 'Value': f'github-action-{os.environ.get("GITHUB_RUN_ID", "manual")}'},
-            {'Key': 'GitHubWorkflow', 'Value': os.environ.get('GITHUB_WORKFLOW', 'manual')},
-            {'Key': 'GitHubRunId', 'Value': os.environ.get('GITHUB_RUN_ID', 'manual')}
-        ]
-    )
     
     return instance_id
 
