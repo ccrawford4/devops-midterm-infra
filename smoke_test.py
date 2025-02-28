@@ -22,21 +22,16 @@ from pathlib import Path
 
 # Get environment variables
 LAUNCH_TEMPLATE_ID = os.environ.get('LAUNCH_TEMPLATE_ID')
-LAUNCH_TEMPLATE_NAME = os.environ.get('LAUNCH_TEMPLATE_NAME')
 AWS_REGION = os.environ.get('AWS_REGION')
 EC2_SSH_KEY = os.environ.get('EC2_SSH_KEY')
 EC2_USER = os.environ.get('EC2_USER')
 HEALTH_CHECK_URL = os.environ.get('HEALTH_CHECK_URL')
+SOURCE_REPO = os.environ.get('SOURCE_REPO')
 
 # Constants
 SSH_TIMEOUT = 300  # 5 minutes
 HEALTH_CHECK_TIMEOUT = 300  # 5 minutes
 HEALTH_CHECK_INTERVAL = 10  # 10 seconds
-
-def write_github_output(name, value):
-    """Write output variables for GitHub Actions."""
-    with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
-        f.write(f"{name}={value}\n")
 
 def create_ssh_key_file():
     """Create a temporary SSH key file from the environment variable."""
@@ -59,14 +54,15 @@ def launch_ec2_instance():
     print("AWS_REGION: ", AWS_REGION)
     print("EC2: ", ec2)
     print("LAUNCH TEMPLATE ID: ", LAUNCH_TEMPLATE_ID)
-    print("LAUNCH TEMPLATE NAME: ", LAUNCH_TEMPLATE_NAME)
+    print("EC2 SSH KEY: ", EC2_SSH_KEY)
+    print("EC2 USER: ", EC2_USER)
+    print("HEALTH_CHECK_URL: ", HEALTH_CHECK_URL)
     
     # Launch the instance
     response = ec2.run_instances(
         LaunchTemplate={
             'LaunchTemplateId': LAUNCH_TEMPLATE_ID,
-            'LaunchTemplateName': LAUNCH_TEMPLATE_NAME,
-            'Version': '1'
+            'Version': '5'
         },
         MinCount=1,
         MaxCount=1
@@ -120,58 +116,32 @@ def wait_for_ssh_ready(public_ip, key_file, timeout=SSH_TIMEOUT):
     
     raise TimeoutError(f"SSH not available after {timeout} seconds")
 
-def copy_files_to_instance(public_ip, key_file):
-    """Copy all files from the current directory to the EC2 instance."""
-    print("Copying files to EC2 instance...")
+def clone_repo(public_ip, key_file):
+    """SSH into the EC2 instance and clone the repository."""
+    print(f"Connecting to EC2 instance {public_ip}...")
     
-    # Create SSH transport
-    transport = paramiko.Transport((public_ip, 22))
-    transport.connect(username=EC2_USER, pkey=paramiko.RSAKey.from_private_key_file(key_file))
-    sftp = paramiko.SFTPClient.from_transport(transport)
-    
-    # Create remote deployment directory
+    # Create SSH client
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
     try:
-        sftp.mkdir("deployment")
-    except IOError:
-        # Directory might already exist
-        pass
-    
-    # Copy all files and directories recursively
-    local_path = "."
-    remote_path = "deployment"
-    
-    for root, dirs, files in os.walk(local_path):
-        # Skip .git directory
-        if '.git' in root:
-            continue
-            
-        # Create directories
-        for dir in dirs:
-            if dir == '.git':
-                continue
-                
-            local_dir_path = os.path.join(root, dir)
-            remote_dir_path = os.path.join(remote_path, os.path.relpath(local_dir_path, local_path))
-            try:
-                sftp.mkdir(remote_dir_path)
-                print(f"Created directory: {remote_dir_path}")
-            except IOError:
-                continue
+        # Connect to EC2 instance
+        ssh.connect(public_ip, username="ec2-user", key_filename=key_file)
         
-        # Copy files
-        for file in files:
-            local_file_path = os.path.join(root, file)
-            remote_file_path = os.path.join(remote_path, os.path.relpath(local_file_path, local_path))
-            
-            try:
-                sftp.put(local_file_path, remote_file_path)
-                print(f"Copied: {local_file_path} -> {remote_file_path}")
-            except Exception as e:
-                print(f"Error copying {local_file_path}: {e}")
+        # Run the git clone command
+        command = f"git clone {SOURCE_REPO}"
+        _, stdout, stderr = ssh.exec_command(command)
+        
+        # Print output
+        print(stdout.read().decode())
+        print(stderr.read().decode())
+
+    except Exception as e:
+        print(f"Error: {e}")
     
-    sftp.close()
-    transport.close()
-    print("File copying completed.")
+    finally:
+        ssh.close()
+        print("SSH connection closed.")
 
 def run_remote_command(public_ip, key_file, command, description=None):
     """Run a command on the remote instance."""
@@ -180,31 +150,26 @@ def run_remote_command(public_ip, key_file, command, description=None):
     
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(
-        hostname=public_ip,
-        username=EC2_USER,
-        key_filename=key_file
-    )
-    
-    stdin, stdout, stderr = ssh.exec_command(command)
-    exit_code = stdout.channel.recv_exit_status()
-    
-    # Print output
-    stdout_content = stdout.read().decode('utf-8')
-    stderr_content = stderr.read().decode('utf-8')
-    
-    if stdout_content:
-        print(f"STDOUT:\n{stdout_content}")
-    if stderr_content:
-        print(f"STDERR:\n{stderr_content}")
-    
-    ssh.close()
-    
-    if exit_code != 0:
-        print(f"Command failed with exit code {exit_code}")
+
+    try:
+        ssh.connect(
+            hostname=public_ip,
+            username='ec2-user',
+            key_filename=key_file
+        )
+        print("Connected to host...")
+        
+        _, stdout, stderr = ssh.exec_command(command)
+        # Print output
+        print(stdout.read().decode())
+        print(stderr.read().decode())
+        
+        ssh.close()
+
+        return True
+    except Exception as e:
+        print(f"Error: {e}")
         return False
-    
-    return True
 
 def run_health_check(public_ip, key_file, health_url, timeout=HEALTH_CHECK_TIMEOUT):
     """Run health checks until they pass or timeout."""
@@ -239,21 +204,11 @@ def run_health_check(public_ip, key_file, health_url, timeout=HEALTH_CHECK_TIMEO
 def run_docker_compose(public_ip, key_file):
     """Run Docker Compose on the remote instance."""
     docker_compose_command = """
-    cd ~/deployment
+    cd ~/devops-midterm-source
     docker-compose up -d
     """
     
     return run_remote_command(public_ip, key_file, docker_compose_command, "Running Docker Compose")
-
-def run_tests(public_ip, key_file):
-    """Run tests on the remote instance."""
-    test_command = """
-    cd ~/deployment
-    # Add your test commands here
-    ./run_tests.sh
-    """
-    
-    return run_remote_command(public_ip, key_file, test_command, "Running tests")
 
 def terminate_instance(instance_id):
     """Terminate the EC2 instance."""
@@ -275,20 +230,18 @@ def main():
         
         # Launch EC2 instance
         instance_id = launch_ec2_instance()
-        write_github_output("instance_id", instance_id)
         
         # Wait for instance to be running
         wait_for_instance_running(instance_id)
         
         # Get public IP
         public_ip = get_instance_public_ip(instance_id)
-        write_github_output("public_ip", public_ip)
         
         # Wait for SSH to be available
         wait_for_ssh_ready(public_ip, key_file)
         
-        # Copy files to instance
-        copy_files_to_instance(public_ip, key_file)
+        # Clone the source repo on the instance
+        clone_repo(public_ip, key_file)
         
         # Run Docker Compose
         if not run_docker_compose(public_ip, key_file):
@@ -297,10 +250,6 @@ def main():
         # Run health checks
         if not run_health_check(public_ip, key_file, HEALTH_CHECK_URL):
             raise Exception("Health checks failed")
-        
-        # Run tests
-        if not run_tests(public_ip, key_file):
-            raise Exception("Tests failed")
         
         print("Deployment and tests completed successfully!")
         

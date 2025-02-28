@@ -28,7 +28,7 @@ export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
 export AWS_DEFAULT_REGION=$AWS_REGION
 aws ecr get-login-password --region $AWS_REGION | docker login -u AWS --password-stdin $ECR_REPOSITORY_URI
-docker ps -q | grep . && docker rm -f \$(docker ps -q) || true
+docker rm -v $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend
 docker run -p "3000:80" -e API_URL="$API_URL" -d $ECR_REPOSITORY_URI:frontend
 docker pull $ECR_REPOSITORY_URI:backend
