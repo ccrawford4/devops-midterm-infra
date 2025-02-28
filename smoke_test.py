@@ -1,15 +1,3 @@
-"""
-EC2 Deployment and Testing Script for GitHub Actions
-
-This script:
-1. Launches an EC2 instance using a launch template
-2. Waits for the instance to be ready
-3. Copies files to the instance
-4. Runs Docker Compose
-5. Performs health checks
-6. Runs tests
-"""
-
 import os
 import sys
 import time
