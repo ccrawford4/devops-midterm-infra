@@ -66,8 +66,12 @@ jobs:
           for service in frontend backend; do
             cd $service
             docker build -t $service .
-            docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}:$service:${{ steps.get-latest-tag.outputs.tag }}
-            docker push ${{ secrets.ECR_REPOSITORY_URI }}:$service:${{ steps.get-latest-tag.outputs.tag }}
+
+            docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}/$service:${{ steps.get-latest-tag.outputs.tag }}
+            docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}/$service:latest
+
+            docker push ${{ secrets.ECR_REPOSITORY_URI }}/$service:${{ steps.get-latest-tag.outputs.tag }}
+            docker push ${{ secrets.ECR_REPOSITORY_URI}}/$service:latest
             cd ..
           done
       
@@ -86,4 +90,3 @@ jobs:
                   "${{ secrets.AWS_REGION }}" \
                   "${{ secrets.ECR_REPOSITORY_URI }}" \
                   "${{ secrets.DB_DSN }}" \
-                  "${{ steps.get-latest-tag.outputs.tag }}"
