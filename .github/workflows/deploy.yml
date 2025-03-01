@@ -19,9 +19,10 @@ jobs:
         with:
           repository: ccrawford4/devops-midterm-source
           fetch-tags: true
-        
-      - uses: actions-ecosystem/action-get-latest-tag@v1
+      
+      - name: Get Latest Tag
         id: get-latest-tag
+        run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
       - uses: actions-ecosystem/action-regex-match@v2
         id: regex-match
