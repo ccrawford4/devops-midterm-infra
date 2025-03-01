@@ -5,8 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
-    name: Deploy to QA
+  smoke_test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Infra Repo
@@ -38,6 +37,11 @@ jobs:
           HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
           SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
 
+  push-to-ec2:
+    needs: smoke_test
+    name: Build Docker Images and Push to ECR
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout Source Repo
         uses: actions/checkout@v4
         with:
@@ -74,11 +78,16 @@ jobs:
             docker push ${{ secrets.ECR_REPOSITORY_URI}}:$service-latest
             cd ..
           done
-      
+    
+  deploy:
+    needs: push-to-ec2
+    name: Deploy to QA
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout Infra Repo
         uses: actions/checkout@v4
 
-      - name: Deploy to QA
+      - name: Run Deploy Script
         run: |
           chmod +x ./run.sh
           ./run.sh "${{ secrets.EC2_PEM }}" \
@@ -89,4 +98,4 @@ jobs:
                   "${{ secrets.AWS_SESSION_TOKEN }}" \
                   "${{ secrets.AWS_REGION }}" \
                   "${{ secrets.ECR_REPOSITORY_URI }}" \
-                  "${{ secrets.DB_DSN }}" \
+                  "${{ secrets.DB_DSN }}"
