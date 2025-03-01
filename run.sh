@@ -27,10 +27,11 @@ export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
 export AWS_DEFAULT_REGION=$AWS_REGION
+rm .env || echo $API_URL >> .env
 aws ecr get-login-password --region $AWS_REGION | docker login -u AWS --password-stdin $ECR_REPOSITORY_URI
 docker rm -v $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend
-docker run -p "3000:80" -e API_URL="$API_URL" -d $ECR_REPOSITORY_URI:frontend
+docker run -p "3000:80" --env-file .env -d $ECR_REPOSITORY_URI:frontend
 docker pull $ECR_REPOSITORY_URI:backend
 docker run -p "8080:8080" -e DB_DSN="$DB_DSN" -d $ECR_REPOSITORY_URI:backend
 sudo systemctl is-active --quiet nginx || sudo systemctl start nginx
