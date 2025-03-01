@@ -6,6 +6,7 @@ on:
 
 jobs:
   determine-deployment:
+    name: Determine Deployment Destination
     runs-on: ubuntu-latest
     outputs:
       ecr_repository: ${{ steps.set-repo.outputs.ecr_repository }}
@@ -26,7 +27,7 @@ jobs:
         id: regex-match
         with:
           text: ${{ steps.get-latest-tag.outputs.tag }}
-          regex: 'v\.\d\.\d{2}-rc\d'
+          regex: '```v\.\d\.\d{2}-rc\d```'
 
       - name: Determine ECR Repository
         id: set-repo
