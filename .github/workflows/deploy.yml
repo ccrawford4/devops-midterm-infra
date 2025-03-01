@@ -5,6 +5,40 @@ on:
     branches: [main]
 
 jobs:
+  determine-deployment:
+    runs-on: ubuntu-latest
+    outputs:
+      ecr_repository: ${{ steps.set-repo.outputs.ecr_repository }}
+      tag: ${{ steps.get-latest-tag.outputs.tag }}
+      ec2_host: ${{ steps.get-latest-tag.outputs.ec2_host }}
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+        with:
+          semver_only: true
+
+      - uses: actions-ecosystem/action-regex-match@v2
+        id: regex-match
+        with:
+          text: ${{ steps.get-latest-tag.outputs.tag }}
+          regex: 'v\.\d\.\d{2}-rc\d'
+
+      - name: Determine ECR Repository
+        id: set-repo
+        run: |
+          if [[ "${{ steps.regex-match.outputs.match }}" == "true" ]]; then
+            echo "Using RC ECR Repository"
+            echo "ecr_repository=${{ secrets.RC_ECR_REPOSITORY_URI }}" >> $GITHUB_ENV
+            echo "ec2_host=${{ secrets.RC_EC2_HOST }}" >> $GITHUB_ENV
+          else
+            echo "Using QA ECR Repository"
+            echo "ecr_repository=${{ secrets.QA_ECR_REPOSITORY_URI }}" >> $GITHUB_ENV
+            echo "ec2_host=${{ secrets.QA_EC2_HOST }}" >> $GITHUB_ENV
+          fi
+
   smoke_test:
     name: Smoke Test
     runs-on: ubuntu-latest
@@ -38,8 +72,8 @@ jobs:
           HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
           SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
 
-  push-to-ec2:
-    needs: smoke_test
+  push-to-ecr:
+    needs: [smoke_test, determine-deployment]
     name: Build Docker Images and Push to ECR
     runs-on: ubuntu-latest
     steps:
@@ -47,12 +81,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ccrawford4/devops-midterm-source
-          fetch-tags: true
-      
-      - uses: actions-ecosystem/action-get-latest-tag@v1
-        id: get-latest-tag
-        with:
-          semver_only: true
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -66,23 +94,26 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push Docker images to Amazon ECR
+      - name: Build, tag, and push Docker images
+        env:
+          ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.ecr_repository }}
+          TAG: ${{ needs.determine-deployment.outputs.tag }}
         run: |
           for service in frontend backend; do
             cd $service
             docker build -t $service .
 
-            docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}:$service-${{ steps.get-latest-tag.outputs.tag }}
-            docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}:$service-latest
+            docker tag $service $ECR_REPOSITORY:$service-$TAG
+            docker tag $service $ECR_REPOSITORY:$service-latest
 
-            docker push ${{ secrets.ECR_REPOSITORY_URI }}:$service-${{ steps.get-latest-tag.outputs.tag }}
-            docker push ${{ secrets.ECR_REPOSITORY_URI}}:$service-latest
+            docker push $ECR_REPOSITORY:$service-$TAG
+            docker push $ECR_REPOSITORY:$service-latest
             cd ..
           done
     
   deploy:
-    needs: push-to-ec2
-    name: Deploy to QA
+    needs: [push-to-ecr, determine-deployment]
+    name: Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Infra Repo
@@ -93,10 +124,10 @@ jobs:
           chmod +x ./run.sh
           ./run.sh "${{ secrets.EC2_PEM }}" \
                   "${{ secrets.EC2_USER }}" \
-                  "${{ secrets.EC2_HOST }}" \
+                  "${{ needs.determine-deployment.outputs.ec2_host }}" \
                   "${{ secrets.AWS_ACCESS_KEY_ID }}" \
                   "${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
                   "${{ secrets.AWS_SESSION_TOKEN }}" \
                   "${{ secrets.AWS_REGION }}" \
-                  "${{ secrets.ECR_REPOSITORY_URI }}" \
+                  "${{ needs.determine-deployment.outputs.ecr_repository }}" \
                   "${{ secrets.DB_DSN }}"
