@@ -25,17 +25,15 @@ echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 
 # Execute remote commands, passing environment variables explicitly
 ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST} bash -s \
-  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$ECR_REPOSITORY_URI" "$DB_DSN" "$HOST" << 'EOF'
+  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$ECR_REPOSITORY_URI" "$DB_DSN" << 'EOF'
 export AWS_ACCESS_KEY_ID=$1
 export AWS_SECRET_ACCESS_KEY=$2
 export AWS_SESSION_TOKEN=$3
 export AWS_DEFAULT_REGION=$4
 ECR_REPOSITORY_URI=$5
-HOST=$7
 
 # Perform actions with the passed environment variables
-echo "REACT_APP_API_URL=$HOST" > .env
-echo "DB_DSN=$(echo "$6" | sed 's/\\//g')" >> .env
+echo "DB_DSN=$(echo "$6" | sed 's/\\//g')" > .env
 docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
 docker rm -v -f $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend
