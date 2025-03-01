@@ -38,12 +38,16 @@ jobs:
         run: |
           if [[ "${{ steps.regex-match.outputs.match }}" == "true" ]]; then
             echo "Using RC ECR Repository"
-            echo "ecr_repository=${{ secrets.RC_ECR_REPOSITORY_URI }}" >> $GITHUB_OUTPUT
-            echo "ec2_host=${{ secrets.RC_EC2_HOST }}" >> $GITHUB_OUTPUT
+            {
+              echo "ecr_repository=${{ secrets.RC_ECR_REPOSITORY_URI }}"
+              echo "ec2_host=${{ secrets.RC_EC2_HOST }}"
+            } >> $GITHUB_OUTPUT
           else
             echo "Using QA ECR Repository"
-            echo "ecr_repository=${{ secrets.QA_ECR_REPOSITORY_URI }}" >> $GITHUB_OUTPUT
-            echo "ec2_host=${{ secrets.QA_EC2_HOST }}" >> $GITHUB_OUTPUT
+            {
+              echo "ecr_repository=${{ secrets.QA_ECR_REPOSITORY_URI }}"
+              echo "ec2_host=${{ secrets.QA_EC2_HOST }}"
+            } >> $GITHUB_OUTPUT
           fi
 
   # smoke_test:
