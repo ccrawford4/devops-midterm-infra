@@ -29,6 +29,9 @@ jobs:
         with:
           text: ${{ steps.get-latest-tag.outputs.tag }}
           regex: '```v\.\d\.\d{2}-rc\d```'
+      
+      - name: Echo Tag
+        run: echo "${{ steps.get-latest-tag.outputs.tag}}"
 
       - name: Determine ECR Repository
         id: set-repo
