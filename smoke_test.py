@@ -45,12 +45,13 @@ def launch_ec2_instance():
     print("EC2 SSH KEY: ", EC2_SSH_KEY)
     print("EC2 USER: ", EC2_USER)
     print("HEALTH_CHECK_URL: ", HEALTH_CHECK_URL)
+    print("SOURCE_REPO: ", SOURCE_REPO)
     
     # Launch the instance
     response = ec2.run_instances(
         LaunchTemplate={
             'LaunchTemplateId': LAUNCH_TEMPLATE_ID,
-            'Version': '1'
+            'Version': '2'
         },
         MinCount=1,
         MaxCount=1
