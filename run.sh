@@ -18,18 +18,26 @@ ECR_REPOSITORY_URI="$8"
 API_URL="$9"
 DB_DSN="${10}"
 
+echo "$AWS_REGION"
+
 # Write private key to file
 echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 
-# Execute remote commands
-ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} bash -s << 'EOF'
-export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
-export AWS_DEFAULT_REGION=$AWS_REGION
-rm .env || echo $API_URL >> .env
-aws ecr get-login-password --region $AWS_REGION | docker login -u AWS --password-stdin $ECR_REPOSITORY_URI
-docker rm -v $(docker ps -aq)
+# Execute remote commands, passing environment variables explicitly
+ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} bash -s \
+  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$API_URL" "$ECR_REPOSITORY_URI" "$DB_DSN" << 'EOF'
+export AWS_ACCESS_KEY_ID=$1
+export AWS_SECRET_ACCESS_KEY=$2
+export AWS_SESSION_TOKEN=$3
+export AWS_DEFAULT_REGION=$4
+API_URL=$5
+ECR_REPOSITORY_URI=$6
+DB_DSN=$7
+
+# Perform actions with the passed environment variables
+echo $API_URL > .env
+docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
+docker rm -v -f $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend
 docker run -p "3000:80" --env-file .env -d $ECR_REPOSITORY_URI:frontend
 docker pull $ECR_REPOSITORY_URI:backend
