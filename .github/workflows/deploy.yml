@@ -70,8 +70,8 @@ jobs:
             docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}:$service-${{ steps.get-latest-tag.outputs.tag }}
             docker tag $service ${{ secrets.ECR_REPOSITORY_URI }}:$service-latest
 
-            docker push ${{ secrets.ECR_REPOSITORY_URI }}/$service-${{ steps.get-latest-tag.outputs.tag }}
-            docker push ${{ secrets.ECR_REPOSITORY_URI}}/$service-latest
+            docker push ${{ secrets.ECR_REPOSITORY_URI }}:$service-${{ steps.get-latest-tag.outputs.tag }}
+            docker push ${{ secrets.ECR_REPOSITORY_URI}}:$service-latest
             cd ..
           done
       
