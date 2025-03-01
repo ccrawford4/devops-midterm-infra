@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if all required arguments are provided
-if [ "$#" -lt 10 ]; then
+if [ "$#" -lt 9 ]; then
     echo "Usage: $0 <PRIVATE_KEY> <USER_NAME> <HOST> <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY> <AWS_SESSION_TOKEN> <AWS_REGION> <ECR_REPOSITORY_URI> <DB_DSN>"
     exit 1
 fi
