@@ -46,6 +46,11 @@ jobs:
             echo "ec2_host=${{ secrets.QA_EC2_HOST }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check Repository URIs
+        run: |
+          echo "${{ steps.set-repo.outputs.ecr_repository }}"
+          echo "${{ steps.set-repo.outputs.ec2_host }}"
+
   smoke_test:
     name: Smoke Test
     runs-on: ubuntu-latest
