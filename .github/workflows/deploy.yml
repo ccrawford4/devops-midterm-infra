@@ -9,17 +9,16 @@ jobs:
     name: Determine Deployment Destination
     runs-on: ubuntu-latest
     outputs:
-      ecr_repository: ${{ steps.set-repo.outputs.ecr_repository }}
+      deploy_target: ${{ steps.set-target.outputs.deploy_target }}
       tag: ${{ steps.get-latest-tag.outputs.tag }}
-      ec2_host: ${{ steps.set-repo.outputs.ec2_host }}
-    
+
     steps:
       - name: Checkout Source Repo
         uses: actions/checkout@v4
         with:
           repository: ccrawford4/devops-midterm-source
           fetch-tags: true
-      
+
       - name: Get Latest Tag
         id: get-latest-tag
         run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
@@ -29,25 +28,19 @@ jobs:
         with:
           text: ${{ steps.get-latest-tag.outputs.tag }}
           regex: 'v\.\d\.\d{2}-rc\d'
-      
+
       - name: Echo Tag
         run: echo "${{ steps.get-latest-tag.outputs.tag}}"
 
       - name: Determine ECR Repository
-        id: set-repo
+        id: set-target
         run: |
           if [[ "${{ steps.regex-match.outputs.match }}" == "true" ]]; then
             echo "Using RC ECR Repository"
-            {
-              echo "ecr_repository=${{ secrets.RC_ECR_REPOSITORY_URI }}"
-              echo "ec2_host=${{ secrets.RC_EC2_HOST }}"
-            } >> $GITHUB_OUTPUT
+            echo "deploy_target=qa" >> $GITHUB_OUTPUT
           else
             echo "Using QA ECR Repository"
-            {
-              echo "ecr_repository=${{ secrets.QA_ECR_REPOSITORY_URI }}"
-              echo "ec2_host=${{ secrets.QA_EC2_HOST }}"
-            } >> $GITHUB_OUTPUT
+            echo "deploy_target=rc" >> $GITHUB_OUTPUT
           fi
 
   # smoke_test:
@@ -61,12 +54,12 @@ jobs:
   #       uses: actions/setup-python@v4
   #       with:
   #         python-version: '3.13'
-        
+
   #     - name: Install dependencies
   #       run: |
   #         python -m pip install --upgrade pip
   #         pip install boto3 paramiko requests
-  
+
   #     - name: Launch EC2 instance and run tests
   #       id: ec2-deploy
   #       run: |
@@ -93,7 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ccrawford4/devops-midterm-source
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -101,14 +94,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
-      
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push Docker images
         env:
-          ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.ecr_repository }}
+          ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_ECR_REPOSITORY_URI || secrets.QA_ECR_REPOSITORY_URI }}
           TAG: ${{ needs.determine-deployment.outputs.tag }}
         run: |
           for service in frontend backend; do
@@ -122,7 +115,7 @@ jobs:
             docker push $ECR_REPOSITORY:$service-latest
             cd ..
           done
-    
+
   deploy:
     needs: [push-to-ecr, determine-deployment]
     name: Deploy
