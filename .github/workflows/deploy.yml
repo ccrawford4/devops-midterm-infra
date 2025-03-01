@@ -16,8 +16,9 @@ jobs:
       - name: Checkout Source Repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ secrets.SOURCE_REPO }}
-
+          repository: ccrawford4/devops-midterm-source
+          fetch-tags: true
+        
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
 
