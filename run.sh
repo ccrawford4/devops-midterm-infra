@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if all required arguments are provided
-if [ "$#" -lt 10 ]; then
-    echo "Usage: $0 <PRIVATE_KEY> <USER_NAME> <HOSTNAME> <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY> <AWS_SESSION_TOKEN> <AWS_REGION> <ECR_REPOSITORY_URI> <API_URL> <DB_DSN>"
+if [ "$#" -lt 9 ]; then
+    echo "Usage: $0 <PRIVATE_KEY> <USER_NAME> <HOSTNAME> <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY> <AWS_SESSION_TOKEN> <AWS_REGION> <ECR_REPOSITORY_URI> <DB_DSN>"
     exit 1
 fi
 
@@ -15,7 +15,6 @@ AWS_SECRET_ACCESS_KEY="$5"
 AWS_SESSION_TOKEN="$6"
 AWS_REGION="$7"
 ECR_REPOSITORY_URI="$8"
-API_URL="$9"
 DB_DSN="${10}"
 
 echo "$AWS_REGION"
@@ -25,17 +24,17 @@ echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 
 # Execute remote commands, passing environment variables explicitly
 ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} bash -s \
-  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$API_URL" "$ECR_REPOSITORY_URI" "$DB_DSN" << 'EOF'
+  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$ECR_REPOSITORY_URI" "$DB_DSN" "$HOSTNAME" << 'EOF'
 export AWS_ACCESS_KEY_ID=$1
 export AWS_SECRET_ACCESS_KEY=$2
 export AWS_SESSION_TOKEN=$3
 export AWS_DEFAULT_REGION=$4
-API_URL=$5
-ECR_REPOSITORY_URI=$6
-DB_DSN=$7
+ECR_REPOSITORY_URI=$5
+DB_DSN=$6
+HOSTNAME=$7
 
 # Perform actions with the passed environment variables
-echo $API_URL > .env
+echo "REACT_APP_API_URL=$HOSTNAME" > .env
 docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
 docker rm -v -f $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend

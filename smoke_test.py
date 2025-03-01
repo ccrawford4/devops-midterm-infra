@@ -194,7 +194,7 @@ def run_docker_compose(public_ip, key_file):
     """Run Docker Compose on the remote instance."""
     docker_compose_command = """
     cd ~/devops-midterm-source
-    echo REACT_APP_API_URL=http://localhost:8080 >> .env
+    echo "REACT_APP_API_URL=http://localhost:8080" > .env
     docker-compose up -d
     """
     
