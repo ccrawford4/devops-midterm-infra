@@ -11,7 +11,7 @@ jobs:
     outputs:
       ecr_repository: ${{ steps.set-repo.outputs.ecr_repository }}
       tag: ${{ steps.get-latest-tag.outputs.tag }}
-      ec2_host: ${{ steps.get-latest-tag.outputs.ec2_host }}
+      ec2_host: ${{ steps.set-repo.outputs.ec2_host }}
     
     steps:
       - name: Checkout Source Repo
@@ -28,7 +28,7 @@ jobs:
         id: regex-match
         with:
           text: ${{ steps.get-latest-tag.outputs.tag }}
-          regex: '```v\.\d\.\d{2}-rc\d```'
+          regex: 'v\.\d\.\d{2}-rc\d'
       
       - name: Echo Tag
         run: echo "${{ steps.get-latest-tag.outputs.tag}}"
@@ -100,15 +100,6 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      
-      - name: Echo Test
-        run: echo "${{ needs.determine-deployment.outputs.ecr_repository }}"
-
-      - name: Echo Test 2
-        run: echo "${{ needs.determine-deployment.outputs.ec2_host }}"
-      
-      - name: "Echo Test 3"
-        run: echo "${{ needs.determine-deployment.outputs.ecr_repository }}"
 
       - name: Build, tag, and push Docker images
         env:
