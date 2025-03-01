@@ -46,11 +46,6 @@ jobs:
             echo "ec2_host=${{ secrets.QA_EC2_HOST }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check Repository URIs
-        run: |
-          echo "${{ steps.set-repo.outputs.ecr_repository }}"
-          echo "${{ steps.set-repo.outputs.ec2_host }}"
-
   smoke_test:
     name: Smoke Test
     runs-on: ubuntu-latest
@@ -105,6 +100,15 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Echo Test
+        run: echo "${{ needs.determine-deployment.outputs.ecr_repository }}"
+
+      - name: Echo Test 2
+        run: echo "${{ needs.determine-deployment.outputs.ec2_host }}"
+      
+      - name: "Echo Test 3"
+        run: echo "${{ needs.determine-deployment.outputs.ecr_repository }}"
 
       - name: Build, tag, and push Docker images
         env:
