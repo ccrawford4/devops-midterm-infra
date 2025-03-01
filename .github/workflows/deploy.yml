@@ -29,9 +29,6 @@ jobs:
           text: ${{ steps.get-latest-tag.outputs.tag }}
           regex: 'v\.\d\.\d{2}-rc\d'
 
-      - name: Echo Tag
-        run: echo "${{ steps.get-latest-tag.outputs.tag}}"
-
       - name: Determine ECR Repository
         id: set-target
         run: |
@@ -125,14 +122,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Deploy Script
+        env:
+          EC2_HOST: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_EC2_HOST || secrets.QA_EC2_HOST }}
+          ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_ECR_REPOSITORY_URI || secrets.QA_ECR_REPOSITORY_URI }}
         run: |
           chmod +x ./run.sh
           ./run.sh "${{ secrets.EC2_PEM }}" \
                   "${{ secrets.EC2_USER }}" \
-                  "${{ needs.determine-deployment.outputs.ec2_host }}" \
+                  "$EC2_HOST" \
                   "${{ secrets.AWS_ACCESS_KEY_ID }}" \
                   "${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
                   "${{ secrets.AWS_SESSION_TOKEN }}" \
                   "${{ secrets.AWS_REGION }}" \
-                  "${{ needs.determine-deployment.outputs.ecr_repository }}" \
+                  "$EC2_REPOSITORY" \
                   "${{ secrets.DB_DSN }}"
