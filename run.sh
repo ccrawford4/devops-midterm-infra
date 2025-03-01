@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if all required arguments are provided
-if [ "$#" -lt 9 ]; then
-    echo "Usage: $0 <PRIVATE_KEY> <USER_NAME> <HOST> <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY> <AWS_SESSION_TOKEN> <AWS_REGION> <ECR_REPOSITORY_URI> <DB_DSN>"
+if [ "$#" -lt 10 ]; then
+    echo "Usage: $0 <PRIVATE_KEY> <USER_NAME> <HOST> <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY> <AWS_SESSION_TOKEN> <AWS_REGION> <ECR_REPOSITORY_URI> <DB_DSN> <RELEASE>"
     exit 1
 fi
 
@@ -16,6 +16,7 @@ AWS_SESSION_TOKEN="$6"
 AWS_REGION="$7"
 ECR_REPOSITORY_URI="$8"
 DB_DSN="$9"
+RELEASE="$10"
 
 echo "$HOST"
 echo "$AWS_REGION"
@@ -25,7 +26,7 @@ echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 
 # Execute remote commands, passing environment variables explicitly
 ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST} bash -s \
-  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$ECR_REPOSITORY_URI" "$DB_DSN" << 'EOF'
+  -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$ECR_REPOSITORY_URI" "$DB_DSN" "$RELEASE" << 'EOF'
 export AWS_ACCESS_KEY_ID=$1
 export AWS_SECRET_ACCESS_KEY=$2
 export AWS_SESSION_TOKEN=$3
@@ -37,8 +38,8 @@ echo "DB_DSN=$(echo "$6" | sed 's/\\//g')" > .env
 docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
 docker rm -v -f $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend
-docker run -p "3000:80" --env-file .env -d $ECR_REPOSITORY_URI:frontend
+docker run -p "3000:80" --env-file .env -d $ECR_REPOSITORY_URI:frontend:$RELEASE
 docker pull $ECR_REPOSITORY_URI:backend
-docker run -p "8080:8080" --env-file .env -d $ECR_REPOSITORY_URI:backend
+docker run -p "8080:8080" --env-file .env -d $ECR_REPOSITORY_URI:backend:$RELEASE
 sudo systemctl is-active --quiet nginx || sudo systemctl start nginx
 EOF
