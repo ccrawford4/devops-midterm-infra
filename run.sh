@@ -36,9 +36,9 @@ ECR_REPOSITORY_URI=$5
 echo "DB_DSN=$(echo "$6" | sed 's/\\//g')" > .env
 docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
 docker rm -v -f $(docker ps -aq)
-docker pull $ECR_REPOSITORY_URI:frontend
+docker pull $ECR_REPOSITORY_URI:frontend-latest
 docker run -p "3000:80" --env-file .env -d $ECR_REPOSITORY_URI:frontend-latest
-docker pull $ECR_REPOSITORY_URI/backend:latest
+docker pull $ECR_REPOSITORY_URI:backend-latest
 docker run -p "8080:8080" --env-file .env -d $ECR_REPOSITORY_URI:backend-latest
 sudo systemctl is-active --quiet nginx || sudo systemctl start nginx
 EOF
