@@ -1,8 +1,9 @@
 name: Nightly Build
 
+# Build every night at 12am
 on:
-  push:
-    branches: [main]
+  schedule:
+    - cron: 0 0 * * *
 
 jobs:
   determine-deployment:
