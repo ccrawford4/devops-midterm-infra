@@ -135,4 +135,4 @@ jobs:
                   "${{ secrets.AWS_SESSION_TOKEN }}" \
                   "${{ secrets.AWS_REGION }}" \
                   "$EC2_REPOSITORY" \
-                  "http://localhost:5000"
+                  "${{ secrets.DB_DSN }}"
