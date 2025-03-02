@@ -27,7 +27,7 @@ jobs:
         id: regex-match
         with:
           text: ${{ steps.get-latest-tag.outputs.tag }}
-          regex: 'v\.\d\.\d{2}-rc\d'
+          regex: 'v[0-9]*.[0-9][0-9]-rc[0-9]*'
 
       - name: Determine ECR Repository
         id: set-target
