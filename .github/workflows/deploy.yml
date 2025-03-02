@@ -32,7 +32,7 @@ jobs:
       - name: Determine ECR Repository
         id: set-target
         run: |
-          if [[ "${{ steps.regex-match.outputs.match }}" == "true" ]]; then
+          if [[ "${{ steps.regex-match.outputs.match }}" != "" ]]; then
             echo "Using RC ECR Repository"
             echo "deploy_target=qa" >> $GITHUB_OUTPUT
           else
