@@ -113,7 +113,8 @@ jobs:
           done
 
   deploy:
-    needs: [push-to-ecr, determine-deployment]
+    # needs: [push-to-ecr, determine-deployment]
+    needs: determine-deployment
     name: Deploy
     runs-on: ubuntu-latest
     steps:
