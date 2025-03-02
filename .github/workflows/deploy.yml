@@ -73,49 +73,50 @@ jobs:
   #         HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
   #         SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
 
-  push-to-ecr:
-    # needs: [smoke_test, determine-deployment]
-    needs: determine-deployment
-    name: Build Docker Images and Push to ECR
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source Repo
-        uses: actions/checkout@v4
-        with:
-          repository: ccrawford4/devops-midterm-source
+  # push-to-ecr:
+  #   # needs: [smoke_test, determine-deployment]
+  #   needs: determine-deployment
+  #   name: Build Docker Images and Push to ECR
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Source Repo
+  #       uses: actions/checkout@v4
+  #       with:
+  #         repository: ccrawford4/devops-midterm-source
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+  #         aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push Docker images
-        env:
-          ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_ECR_REPOSITORY_URI || secrets.QA_ECR_REPOSITORY_URI }}
-          TAG: ${{ needs.determine-deployment.outputs.tag }}
-        run: |
-          for service in frontend backend; do
-            cd $service
-            docker build -t $service .
+  #     - name: Build, tag, and push Docker images
+  #       env:
+  #         ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_ECR_REPOSITORY_URI || secrets.QA_ECR_REPOSITORY_URI }}
+  #         TAG: ${{ needs.determine-deployment.outputs.tag }}
+  #       run: |
+  #         for service in frontend backend; do
+  #           cd $service
+  #           docker build -t $service .
 
-            docker tag $service $ECR_REPOSITORY:$service-$TAG
-            docker tag $service $ECR_REPOSITORY:$service-latest
+  #           docker tag $service $ECR_REPOSITORY:$service-$TAG
+  #           docker tag $service $ECR_REPOSITORY:$service-latest
 
-            docker push $ECR_REPOSITORY:$service-$TAG
-            docker push $ECR_REPOSITORY:$service-latest
-            cd ..
-          done
+  #           docker push $ECR_REPOSITORY:$service-$TAG
+  #           docker push $ECR_REPOSITORY:$service-latest
+  #           cd ..
+  #         done
 
   deploy:
-    needs: [push-to-ecr, determine-deployment]
+    # needs: [push-to-ecr, determine-deployment]
     # needs: push-to-ecr
+    needs: determine-deployment
     name: Deploy
     runs-on: ubuntu-latest
     steps:
@@ -150,19 +151,3 @@ jobs:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
-
-      - name: Run Deploy Script
-        env:
-          EC2_HOST: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_EC2_HOST || secrets.QA_EC2_HOST }}
-          ECR_REPOSITORY: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_ECR_REPOSITORY_URI || secrets.QA_ECR_REPOSITORY_URI }}
-        run: |
-          chmod +x ./run.sh
-          ./run.sh "${{ secrets.EC2_PEM }}" \
-                  "${{ secrets.EC2_USER }}" \
-                  "$EC2_HOST" \
-                  "${{ secrets.AWS_ACCESS_KEY_ID }}" \
-                  "${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-                  "${{ secrets.AWS_SESSION_TOKEN }}" \
-                  "${{ secrets.AWS_REGION }}" \
-                  "$EC2_REPOSITORY" \
-                  "${{ secrets.DB_DSN }}"
