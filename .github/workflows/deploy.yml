@@ -21,7 +21,7 @@ jobs:
 
       - name: Get Latest Tag
         id: get-latest-tag
-        run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+        run: echo "tag=$(git tag --list --sort=-v:refname | head -n 1)" >> $GITHUB_OUTPUT
 
       - uses: actions-ecosystem/action-regex-match@v2
         id: regex-match
@@ -74,8 +74,7 @@ jobs:
           SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
 
   push-to-ecr:
-    # needs: [smoke_test, determine-deployment]
-    needs: determine-deployment
+    needs: [smoke_test, determine-deployment]
     name: Build Docker Images and Push to ECR
     runs-on: ubuntu-latest
     steps:
