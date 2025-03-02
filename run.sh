@@ -34,6 +34,8 @@ ECR_REPOSITORY_URI=$5
 
 # Perform actions with the passed environment variables
 echo "DB_DSN=$(echo "$6" | sed 's/\\//g')" > .env
+echo $ECR_REPOSITORY
+echo $DB_DSN
 docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
 docker rm -v -f $(docker ps -aq)
 docker pull $ECR_REPOSITORY_URI:frontend-latest
