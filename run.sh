@@ -26,14 +26,14 @@ echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 # Execute remote commands, passing environment variables explicitly
 ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST} bash -s \
   -- "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_SESSION_TOKEN" "$AWS_REGION" "$ECR_REPOSITORY_URI" "$DB_DSN" << 'EOF'
-export AWS_ACCESS_KEY_ID=$0
-export AWS_SECRET_ACCESS_KEY=$1
-export AWS_SESSION_TOKEN=$2
-export AWS_DEFAULT_REGION=$3
-ECR_REPOSITORY_URI=$4
+export AWS_ACCESS_KEY_ID=$1
+export AWS_SECRET_ACCESS_KEY=$2
+export AWS_SESSION_TOKEN=$3
+export AWS_DEFAULT_REGION=$4
+ECR_REPOSITORY_URI=$5
 
 # Perform actions with the passed environment variables
-echo "DB_DSN=$(echo "$5" | sed 's/\\//g')" > .env
+echo "DB_DSN=$(echo "$6" | sed 's/\\//g')" > .env
 echo $ECR_REPOSITORY
 echo $DB_DSN
 docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) $ECR_REPOSITORY_URI
