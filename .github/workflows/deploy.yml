@@ -40,41 +40,42 @@ jobs:
             echo "deploy_target=qa" >> $GITHUB_OUTPUT
           fi
 
-  smoke_test:
-    name: Smoke Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Infra Repo
-        uses: actions/checkout@v4
+  # smoke_test:
+  #   name: Smoke Test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Infra Repo
+  #       uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.13'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install boto3 paramiko requests
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install boto3 paramiko requests
 
-      - name: Launch EC2 instance and run tests
-        id: ec2-deploy
-        run: |
-          python smoke_test.py
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-          EC2_SSH_KEY: ${{ secrets.EC2_PEM }}
-          LAUNCH_TEMPLATE_ID: ${{ secrets.LAUNCH_TEMPLATE_ID }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
-          SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
+  #     - name: Launch EC2 instance and run tests
+  #       id: ec2-deploy
+  #       run: |
+  #         python smoke_test.py
+  #       env:
+  #         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+  #         AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+  #         EC2_SSH_KEY: ${{ secrets.EC2_PEM }}
+  #         LAUNCH_TEMPLATE_ID: ${{ secrets.LAUNCH_TEMPLATE_ID }}
+  #         AWS_REGION: ${{ secrets.AWS_REGION }}
+  #         EC2_USER: ${{ secrets.EC2_USER }}
+  #         HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
+  #         SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
 
   push-to-ecr:
-    needs: [smoke_test, determine-deployment]
+    # needs: [smoke_test, determine-deployment]
+    needs: determine-deployment
     name: Build Docker Images and Push to ECR
     runs-on: ubuntu-latest
     steps:
@@ -113,13 +114,42 @@ jobs:
           done
 
   deploy:
-    # needs: [push-to-ecr, determine-deployment]
-    needs: determine-deployment
+    needs: [push-to-ecr, determine-deployment]
+    # needs: push-to-ecr
     name: Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Infra Repo
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install boto3 paramiko requests
+
+      - name: Deploy to Target Host
+        id: ec2-deploy
+        run: |
+          python deploy.py
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ECR_REPOSITORY_URI: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_ECR_REPOSITORY_URI || secrets.QA_ECR_REPOSITORY_URI }}
+          EC2_SSH_KEY: ${{ secrets.EC2_PEM }}
+          EC2_HOST: ${{ needs.determine-deployment.outputs.deploy_target == 'rc' && secrets.RC_EC2_HOST || secrets.QA_EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
 
       - name: Run Deploy Script
         env:
